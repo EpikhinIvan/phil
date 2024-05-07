@@ -211,146 +211,190 @@ def create_report_message(message):
 
 
 
-# # тУТА аДМиНсКаЯ ЧаСтЬ
+# тУТА аДМиНсКаЯ ЧаСтЬ
 
 
-# ADMIN_TELEGRAM_ID = 943230099
+ADMIN_TELEGRAM_ID = 943230099
  
-# # команда для админа типа старт
-# @bot.message_handler(commands=['show_requests'])
-# def show_requests(message):
-#     if message.from_user.id == ADMIN_TELEGRAM_ID:
-#         send_all_requests(message.chat.id)
-#     else:
-#         bot.send_message(message.chat.id, "У вас нет доступа к этой команде.")
+# команда для админа типа старт
+@bot.message_handler(commands=['show_requests'])
+def show_requests(message):
+    if message.from_user.id == ADMIN_TELEGRAM_ID:
+        send_all_requests(message.chat.id)
+    else:
+        bot.send_message(message.chat.id, "У вас нет доступа к этой команде.")
 
 
-# # высылаются все задачи непрочитанные
-# def send_all_requests(chat_id):
-#     requests = UserRequest.objects.filter(status=True)
-#     if requests:
-#         for request in requests:
-#             send_request(chat_id, request)
-#     else:
-#         bot.send_message(chat_id, "Нет непрочитанных заявок.")
+# высылаются все задачи непрочитанные
+def send_all_requests(chat_id):
+    requests = UserRequest.objects.filter(status=True)
+    if requests:
+        for request in requests:
+            send_request(chat_id, request)
+    else:
+        bot.send_message(chat_id, "Нет непрочитанных заявок.")
 
 
 
-# # выбранная заявка
-# def send_request(chat_id, request):
-#     formatted_time = request.time.strftime('%Y-%m-%d %H:%M:%S')
-#     bot.send_photo(chat_id, photo=open(request.report_photo.path, 'rb'),
-#                    caption=(f'<b>ФИО:</b> {request.full_name}'
-#                             f'\n<b>Дата обращения:</b> {formatted_time}'
-#                             f'\n<b>Категория обращения:</b> {request.report_category}'
-#                             f'\n<b>Описание:</b>\n{request.report_text}'),
-#                    parse_mode='HTML',
-#                    reply_markup=generate_reply_markup(request.id))
+# заявочки
+def send_request(chat_id, request):
+    formatted_time = request.time.strftime('%Y-%m-%d %H:%M:%S')
+    bot.send_photo(chat_id, photo=open(request.report_photo.path, 'rb'),
+                   caption=(f'<b>ФИО:</b> {request.full_name}'
+                            f'\n<b>Дата обращения:</b> {formatted_time}'
+                            f'\n<b>Категория обращения:</b> {request.report_category}'
+                            f'\n<b>Описание:</b>\n{request.report_text}'),
+                   parse_mode='HTML',
+                   reply_markup=generate_reply_markup(request.id))
+    
+    bot.send_location(chat_id, latitude=request.location_lat, longitude=request.location_lon)
+    
     
 
 
-# # Функция для генерации клавиатуры с кнопкой выбора заявки
-# def generate_reply_markup(request_id):
-#     markup = types.InlineKeyboardMarkup()
-#     button = types.InlineKeyboardButton("Выбрать заявку", callback_data=f"select_request:{request_id}")
-#     markup.add(button)
-#     return markup
+# Функция для генерации клавиатуры с кнопкой выбора заявки
+def generate_reply_markup(request_id):
+    markup = types.InlineKeyboardMarkup()
+    button = types.InlineKeyboardButton("Выбрать заявку", callback_data=f"select_request:{request_id}")
+    markup.add(button)
+    return markup
 
 
 
-# # Обработчик нажатия кнопки "Выбрать заявку"
-# @bot.callback_query_handler(func=lambda call: call.data.startswith('select_request'))
-# def select_request(call):
-#     request_id = int(call.data.split(':')[1])
-#     request = UserRequest.objects.get(id=request_id)
-#     send_request_to_admin(call.message.chat.id, request)
-#     update_request_status(request_id)
+# Выбрать заявку обработчик
+@bot.callback_query_handler(func=lambda call: call.data.startswith('select_request'))
+def select_request(call):
+    request_id = int(call.data.split(':')[1])
+    request = UserRequest.objects.get(id=request_id)
+    send_request_to_admin(call.message.chat.id, request)
+
+    # Удаляем сообщение о выбранной заявке
+    bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 
-# # Функция для отправки выбранной заявки администратору и изменения ее статуса
-# def send_request_to_admin(chat_id, request):
-#     formatted_time = request.time.strftime('%Y-%m-%d %H:%M:%S')
-#     bot.send_photo(chat_id, photo=open(request.report_photo.path, 'rb'),
-#                    caption=(f'<b>ФИО:</b> {request.full_name}'
-#                             f'\n<b>Дата обращения:</b> {formatted_time}'
-#                             f'\n<b>Категория обращения:</b> {request.report_category}'
-#                             f'\n<b>Описание:</b>\n{request.report_text}'),
-#                    parse_mode='HTML',
-#                    reply_markup=generate_answer_markup(request.id))
+# Функция для отправки выбранной заявки администратору и изменения ее статуса
+def send_request_to_admin(chat_id, request):
+    formatted_time = request.time.strftime('%Y-%m-%d %H:%M:%S')
+    bot.send_photo(chat_id, photo=open(request.report_photo.path, 'rb'),
+                   caption=(f'<b>ФИО:</b> {request.full_name}'
+                            f'\n<b>Дата обращения:</b> {formatted_time}'
+                            f'\n<b>Категория обращения:</b> {request.report_category}'
+                            f'\n<b>Описание:</b>\n{request.report_text}'),
+                   parse_mode='HTML',
+                   reply_markup=generate_answer_markup(request.id))
+    bot.send_location(chat_id, latitude=request.location_lat, longitude=request.location_lon)
+    
     
 
 
-# # Функция для генерации клавиатуры с кнопкой ответа на заявку
-# def generate_answer_markup(request_id):
-#     markup = types.InlineKeyboardMarkup()
-#     button = types.InlineKeyboardButton("Ответить на заявку", callback_data=f"answer_request:{request_id}")
-#     markup.add(button)
-#     return markup
+# Функция для генерации клавиатуры с кнопкой ответа на заявку
+def generate_answer_markup(request_id):
+    markup = types.InlineKeyboardMarkup()
+    button = types.InlineKeyboardButton("Ответить на заявку", callback_data=f"answer_request:{request_id}")
+    markup.add(button)
+    return markup
 
 
 
-# # Функция для изменения статуса заявки на False
-# def update_request_status(request_id):
-#     request = UserRequest.objects.get(id=request_id)
-#     request.status = False
-#     request.save()
+# Статус меняем и отправляем сообщение юзеру
+def update_request_status(request_id):
+    request = UserRequest.objects.get(id=request_id)
+    request.status = False
+    request.save()
+
+    user_id = request.user_id
+    bot.send_message(user_id, "Ваша заявка была выбрана для обработки. Ожидайте ответа в течении 15 рабочий дней.")
 
 
 
-# # Обработчик нажатия кнопки "Ответить на заявку"
-# @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_request'))
-# def answer_request(call):
-#     request_id = int(call.data.split(':')[1])
-#     bot.send_message(call.message.chat.id, "Введите ваше имя:")
-#     bot.register_next_step_handler(call.message, process_name_step, request_id)
+# Ответить на заявку обработчик
+@bot.callback_query_handler(func=lambda call: call.data.startswith('answer_request'))
+def answer_request(call):
+    request_id = int(call.data.split(':')[1])
+    update_request_status(request_id)
+    bot.send_message(call.message.chat.id, "Введите ваше имя:")
+    bot.register_next_step_handler(call.message, process_name_step2, request_id)
 
-# # Обработчик имени администратора
-# def process_name_step(message, request_id):
-#     name = message.text.strip()
-#     bot.send_message(message.chat.id, "Введите описание вашего действия:")
-#     bot.register_next_step_handler(message, process_description_step, request_id, name)
 
-# # Обработчик описания действия
-# def process_description_step(message, request_id, name):
-#     description = message.text.strip()
-#     bot.send_message(message.chat.id, "Отправьте фотографию вашего действия:")
-#     bot.register_next_step_handler(message, process_photo_step2, request_id, name, description)
 
-# # Обработчик фотографии действия
-# def process_photo_step2(message, request_id, name, description):
-#     if message.photo:
-#         photo = message.photo[-1]
-#         file_info = bot.get_file(photo.file_id)
-#         file_path = file_info.file_path
-#         downloaded_file = bot.download_file(file_path)
-        
-#         # Сохранение фотографии на сервере
-#         with open(f'{file_path}.jpg', 'wb') as new_file:
-#             new_file.write(downloaded_file)
-        
-#         # Создание ответа администратора
-#         admin_response = AdminResponse.objects.create(user_request_id=request_id, admin_full_name=name,
-#                                                        admin_response_text=description, admin_response_photo=f'{file_path}.jpg')
-#         admin_response.save()
-        
-#         # Отправка сообщения пользователю с полным сообщением
-#         send_full_response_to_user(message, name, description, f'{file_path}.jpg')
+# это функция обработки имени пользователя
+def process_name_step2(message, request_id):
+    chat_id = message.chat.id
 
-#     else:
-#         bot.send_message(message.chat.id, "Пожалуйста, отправьте фотографию вашего действия.")
-#         bot.register_next_step_handler(message, process_photo_step, request_id, name, description)
+    if message.text is None:
+        bot.send_message(chat_id, "Пожалуйста, напишите имя текстом")
+        bot.register_next_step_handler(message, process_name_step2, request_id)
+        return
+    
+    name = message.text.strip()
 
-# # Функция для отправки полного сообщения пользователю
-# def send_full_response_to_user(message, name, description, photo_path):
-#     user_request = UserRequest.objects.get(id=message.from_user.id)
-#     formatted_time = user_request.time.strftime('%Y-%m-%d %H:%M:%S')
+    if not all(char.isalpha() or char.isspace() for char in name):
+        bot.send_message(chat_id, "Пожалуйста, введите ваше имя в правильном формате.")
+        bot.register_next_step_handler(message, process_name_step2, request_id)
+        return
+    
+    bot.send_message(message.chat.id, "Введите описание вашего действия:")
+    bot.register_next_step_handler(message, process_description_step2, request_id, name)
 
-#     bot.send_photo(message.chat.id, photo=open(photo_path, 'rb'),
-#                    caption=(f'<b>ФИО администратора:</b> {name}'
-#                             f'\n<b>Описание действия:</b> {description}'
-#                             f'\n<b>Фотография действия:</b>'),
-#                    parse_mode='HTML')
+    
+
+# это функция для обработки описания
+def process_description_step2(message, request_id, name):
+    chat_id = message.chat.id
+
+    if message.text is None:
+        bot.send_message(chat_id, "Пожалуйста напишите описание.")
+        bot.register_next_step_handler(message, process_description_step2, request_id, name)
+        return
+    
+    description = message.text.strip()
+
+    bot.send_message(message.chat.id, "Отправьте фотографию вашего действия:")
+    bot.register_next_step_handler(message, process_photo_step2, request_id, name, description)
+
+
+# Обработчик фотографии действия
+def process_photo_step2(message, request_id, name, description):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+
+    if message.photo:
+        photo = message.photo[-1]
+        file_info = bot.get_file(photo.file_id)
+        file_path = file_info.file_path
+        downloaded_file = bot.download_file(file_path)
+
+        photo_content = ContentFile(downloaded_file)
+
+        photo_file = File(photo_content)
+
+        image_path = os.path.join('response_photos', file_path.split('/')[-1])
+
+        with open(image_path, 'wb') as f:
+            f.write(photo_file.read())
+
+        admin_response = AdminResponse.objects.create(user_request_id=request_id, admin_full_name=name,
+                                                       admin_response_text=description, admin_response_photo=image_path)
+        admin_response.save()
+
+        send_full_response_to_user(request_id, name, description, image_path)
+
+    else:
+        bot.send_message(chat_id, "Пожалуйста, отправьте фотографию.")
+        bot.register_next_step_handler(message, process_photo_step2, request_id, name, description)
+
+
+# Отправляем полное сообщение юзеру о выполненной работе
+def send_full_response_to_user(request_id, name, description, photo_path):
+    user_request = UserRequest.objects.get(id=request_id)
+    formatted_time = user_request.time.strftime('%Y-%m-%d %H:%M:%S')
+
+    bot.send_photo(user_request.user_id, photo=open(photo_path, 'rb'),
+                   caption=(f'<b>ФИО администратора:</b> {name}'
+                            f'\n<b>Описание действия:</b> {description}'
+                            f'\n<b>Фотография действия:</b>'),
+                   parse_mode='HTML')
 
 
 
