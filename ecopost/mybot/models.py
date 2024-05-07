@@ -3,14 +3,8 @@ from django.db import models
 class UserRequest(models.Model):
     user_id = models.IntegerField(verbose_name='Юзер')  
     full_name = models.CharField(max_length=255, verbose_name='ФИО')
-    VARIABLE = [
-        ['Свалка' , 'Свалка'],
-        ['Задымление' , 'Задымление'],
-        ['Вырубка деревьев' , 'Вырубка деревьев'],
-        ['Незаконный выброс естественных отходов' , 'Незаконный выброс естественных отходов'],
-        ['Другое' , 'Другое']
-    ]
-    report_category = models.CharField(max_length=255, verbose_name='Категория', choices=VARIABLE)
+   
+    report_category = models.CharField(max_length=255, verbose_name='Категория')
     report_text = models.TextField(verbose_name='Описание')
     location_lat = models.FloatField(verbose_name='латитуд', blank=True, null=True)
     location_lon = models.FloatField(verbose_name='лонг', blank=True, null=True)
